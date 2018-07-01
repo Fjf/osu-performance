@@ -1,10 +1,3 @@
-import base64
-import json
-import lzma
-import os
-
-import requests
-
 from downloaders.replay_downloader import download_replay
 
 
@@ -47,9 +40,9 @@ class MapReplay:
         self.overallDifficulty = 9.3
         self.api_key = api_key
 
-        self.hitwindow50 = 150 + 50 * (5 - self.overallDifficulty) / 5
-        self.hitwindow100 = 100 + 40 * (5 - self.overallDifficulty) / 5
-        self.hitwindow300 = 50 + 30 * (5 - self.overallDifficulty) / 5
+        self.hit_window50 = 150 + 50 * (5 - self.overallDifficulty) / 5
+        self.hit_window100 = 100 + 40 * (5 - self.overallDifficulty) / 5
+        self.hit_window300 = 50 + 30 * (5 - self.overallDifficulty) / 5
 
         # Store data about the replay:
         # 0 if hit the circle with a 300
@@ -59,11 +52,6 @@ class MapReplay:
         self.replay = []
 
     def load_map(self):
-        # TODO: Download map automatically from osu website.
-        #       For now assume the map is downloaded.
-        # url = "https://osu.ppy.sh/b/get_beatmaps?k={}&b={}".format(keys[1], map_id)
-        # 1531044
-
         is_map_data = False
         is_difficulty_data = False
         for line in open("data/{}.osu".format(self.map_id), encoding="utf-8"):
@@ -113,17 +101,13 @@ class MapReplay:
         obj_idx = 0
         l_click = False
         r_click = False
-        for move_point in replay_data.split(","):
-            data = move_point.split("|")
-
-            # Last line is empty
-            if len(data) < 4:
-                break
-
-            time = int(data[0])
-            x = float(data[1])
-            y = float(data[2])
-            key = int(data[3])
+        for replay_event in replay_data:
+            time = replay_event.time_since_previous_action
+            if time < 0:
+                continue
+            x = replay_event.x
+            y = replay_event.y
+            key = replay_event.keys_pressed
 
             # Checks which keys were pressed at which timestamp.
             k5 = key & 5 == 5
@@ -142,15 +126,15 @@ class MapReplay:
                 continue
 
             hit_time = abs(total_time - self.map[obj_idx][0])
-            if (on_r_click or on_l_click) and hit_time < self.hitwindow50:
+            if (on_r_click or on_l_click) and hit_time < self.hit_window50:
                 if type(self.map[obj_idx][1]) is Circle:
                     # Actually clicking on the circle.
                     if (x - self.map[obj_idx][1].x)**2 + (y - self.map[obj_idx][1].y)**2 \
                             < (54.4 - 4.48 * self.circleSize)**2:
 
-                        if hit_time < self.hitwindow300:
+                        if hit_time < self.hit_window300:
                             pass
-                        elif hit_time < self.hitwindow100:
+                        elif hit_time < self.hit_window100:
                             print("A 100 at circle: {}".format(obj_idx))
                         else:
                             print("A 50")
