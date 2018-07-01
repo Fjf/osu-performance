@@ -11,7 +11,7 @@ def download_replay(api_key, player_id, map_id):
     #  peppy's server.
     filename = "data/{}_{}".format(map_id, player_id)
     if os.path.isfile(filename):
-        with open(filename, 'r') as file:
+        with open(filename, 'r', encoding="utf-8") as file:
             replay_data = file.read()
     else:
         url = "https://osu.ppy.sh/api/get_replay?k={}&m=0&b={}&u={}".format(api_key, map_id, player_id)
