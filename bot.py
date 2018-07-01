@@ -23,6 +23,14 @@ class Slider:
         spl = sliderdata.split("|")
         self.type = spl[0]
         # We need this to later calculate if the player stayed on the slider
+        if self.type == "L":
+            self.end_x = spl[1].split(":")[0]
+            self.end_y = spl[1].split(":")[1]
+            pass
+        elif self.type == "P":
+            pass
+        elif self.type == "B":
+            pass
         self.sliderdata = spl[1]
 
 
@@ -51,7 +59,7 @@ class MapReplay:
         # 1531044
 
         isMapData = False
-        for line in open("data/{}.osu".format(self.mapid)):
+        for line in open("data/{}.osu".format(self.mapid), encoding="utf-8"):
             if isMapData:
                 objData = line.strip().split(",")
 
@@ -271,17 +279,17 @@ if __name__ == "__main__":
         password = keys[3]
         map_downloader = MapDownloader(user, password)
 
-        mapid = "1531044"
+        mapid = "1368008"
         map_downloader.download(mapid)
 
         # str = input("Please input a map id.\n").strip()
-        #
-        # mapReplay = MapReplay()
-        # mapReplay.mapid = mapid
-        # mapReplay.load_map()
-        #
-        # # str = input("Please input a player name.\n").strip()
-        # str = "minatozaki"
-        #
-        # mapReplay.load_replay(str)
+
+        mapReplay = MapReplay()
+        mapReplay.mapid = mapid
+        mapReplay.load_map()
+
+        # str = input("Please input a player name.\n").strip()
+        str = "2_in_1_men"
+
+        mapReplay.load_replay(str)
         client.close()
