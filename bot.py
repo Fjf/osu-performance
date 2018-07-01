@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # decode_file("2_in_1_men", "123456789")
 
-    map_id = "123456789"
+    map_id = "1368008"
     map_downloader = MapDownloader(keys[2], keys[3])
     map_downloader.download(map_id)
 
