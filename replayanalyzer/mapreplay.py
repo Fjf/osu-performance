@@ -27,6 +27,13 @@ class Slider:
 
 class MapReplay:
     def __init__(self, api_key):
+        self.drain_rate = 0
+        self.circle_size = 0
+        self.overall_difficulty = 0
+        self.approach_rate = 0
+        self.slider_multiplier = 0
+        self.slider_tick_rate = 0
+
         self.map_id = ""
         self.map = []
         self.circleSize = 4
@@ -46,9 +53,11 @@ class MapReplay:
 
     def load_map(self):
         is_map_data = False
+        is_difficulty_data = False
         for line in open("data/{}.osu".format(self.map_id), encoding="utf-8"):
+            stripped_line = line.strip()
             if is_map_data:
-                obj_data = line.strip().split(",")
+                obj_data = stripped_line.split(",")
 
                 x = int(obj_data[0])
                 y = int(obj_data[1])
@@ -59,10 +68,30 @@ class MapReplay:
                 elif type % 4 == 2:  # %4, to also catch the sliders that start new combo
                     self.map.append((time, Slider(x, y, obj_data[5])))
 
+            if is_difficulty_data:
+                diff_data = stripped_line.split(":")
+                if diff_data[0] == "HPDrainRate":
+                    self.drain_rate = diff_data[1]
+                elif diff_data[0] == "CircleSize":
+                    self.circle_size = diff_data[1]
+                elif diff_data[0] == "OverallDifficulty":
+                    self.overall_difficulty = diff_data[1]
+                elif diff_data[0] == "ApproachRate":
+                    self.approach_rate = diff_data[1]
+                elif diff_data[0] == "SliderMultiplier":
+                    self.slider_multiplier = diff_data[1]
+                elif diff_data[0] == "SliderTickRate":
+                    self.slider_tick_rate = diff_data[1]
+
             # Only use relevant data for map parsing.
-            if line.strip() == "[HitObjects]":
+            if stripped_line == "[Difficulty]":
+                is_difficulty_data = True
+            elif is_difficulty_data and stripped_line == "":
+                is_difficulty_data = False
+
+            if stripped_line == "[HitObjects]":
                 is_map_data = True
-            elif is_map_data and line.strip() == "":
+            elif is_map_data and stripped_line == "":
                 is_map_data = False
 
     def load_replay(self, player_id):
