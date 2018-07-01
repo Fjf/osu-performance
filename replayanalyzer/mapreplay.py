@@ -5,6 +5,8 @@ import os
 
 import requests
 
+from downloaders.replay_downloader import download_replay
+
 
 class Circle:
     def __init__(self, x, y):
@@ -47,53 +49,35 @@ class MapReplay:
         # url = "https://osu.ppy.sh/b/get_beatmaps?k={}&b={}".format(keys[1], map_id)
         # 1531044
 
-        isMapData = False
+        is_map_data = False
         for line in open("data/{}.osu".format(self.map_id), encoding="utf-8"):
-            if isMapData:
-                objData = line.strip().split(",")
+            if is_map_data:
+                obj_data = line.strip().split(",")
 
-                x = int(objData[0])
-                y = int(objData[1])
-                time = int(objData[2])
-                type = int(objData[3])
+                x = int(obj_data[0])
+                y = int(obj_data[1])
+                time = int(obj_data[2])
+                type = int(obj_data[3])
                 if type % 4 == 1:  # %4, to also catch the circles that start new combo
                     self.map.append((time, Circle(x, y)))
                 elif type % 4 == 2:  # %4, to also catch the sliders that start new combo
-                    self.map.append((time, Slider(x, y, objData[5])))
+                    self.map.append((time, Slider(x, y, obj_data[5])))
 
             # Only use relevant data for map parsing.
             if line.strip() == "[HitObjects]":
-                isMapData = True
-            elif isMapData and line.strip() == "":
-                isMapData = False
+                is_map_data = True
+            elif is_map_data and line.strip() == "":
+                is_map_data = False
 
     def load_replay(self, player_id):
-        # If the replay is already downloaded, dont download again to save
-        #  peppy's server.
-        filename = "data/{}_{}".format(self.map_id, player_id)
-        if os.path.isfile(filename):
-            with open(filename, 'r') as file:
-                replaydata = file.read()
-        else:
-            url = "https://osu.ppy.sh/api/get_replay?k={}&m=0&b={}&u={}".format(self.api_key, self.map_id, player_id)
-            print("Requesting Replay Data...")
-
-            r = requests.get(url)
-            json_data = json.loads(r.text)
-
-            data = base64.b64decode(json_data["content"])
-            replaydata = lzma.decompress(data).decode("utf-8")
-            with open(filename, 'w') as f:
-                f.write(replaydata)
+        replay_data = download_replay(self.api_key, player_id, self.map_id)
 
         total_time = 0
         obj_idx = 0
-        onlclick = False
-        onrclick = False
-        lclick = False
-        rclick = False
-        for mvpoint in replaydata.split(","):
-            data = mvpoint.split("|")
+        l_click = False
+        r_click = False
+        for move_point in replay_data.split(","):
+            data = move_point.split("|")
 
             # Last line is empty
             if len(data) < 4:
@@ -108,11 +92,11 @@ class MapReplay:
             k5 = key & 5 == 5
             k10 = key & 10 == 10
 
-            onlclick = k5 and not lclick
-            onrclick = k10 and not rclick
+            on_l_click = k5 and not l_click
+            on_r_click = k10 and not r_click
 
-            lclick = k5
-            rclick = k10
+            l_click = k5
+            r_click = k10
 
             total_time += time
 
@@ -120,16 +104,16 @@ class MapReplay:
             if obj_idx >= len(self.map):
                 continue
 
-            hittime = abs(total_time - self.map[obj_idx][0])
-            if (onrclick or onlclick) and hittime < self.hitwindow50:
+            hit_time = abs(total_time - self.map[obj_idx][0])
+            if (on_r_click or on_l_click) and hit_time < self.hitwindow50:
                 if type(self.map[obj_idx][1]) is Circle:
                     # Actually clicking on the circle.
                     if (x - self.map[obj_idx][1].x)**2 + (y - self.map[obj_idx][1].y)**2 \
                             < (54.4 - 4.48 * self.circleSize)**2:
 
-                        if hittime < self.hitwindow300:
+                        if hit_time < self.hitwindow300:
                             pass
-                        elif hittime < self.hitwindow100:
+                        elif hit_time < self.hitwindow100:
                             print("A 100 at circle: {}".format(obj_idx))
                         else:
                             print("A 50")
