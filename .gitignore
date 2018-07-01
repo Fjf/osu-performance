@@ -1,2 +1,4 @@
 key
 data/*
+env/*
+pyvenv.cfg

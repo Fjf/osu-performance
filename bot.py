@@ -7,16 +7,13 @@ import base64
 import lzma
 import os.path
 import sys
+import os
 
-if len(sys.argv) > 0:
-    if sys.argv[1] == "--offline":
-        OPEN_DISCORD = False
 
 class Circle:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-
 
 class Slider:
     def __init__(self, x, y, sliderdata):
@@ -46,7 +43,7 @@ class MapReplay:
         # 3 for a miss
         self.replay = []
 
-    def loadMap(self):
+    def load_map(self):
         # TODO: Download map automatically from osu website.
         #       For now assume the map is downloaded.
         # url = "https://osu.ppy.sh/b/get_beatmaps?k={}&b={}".format(keys[1], mapid)
@@ -56,15 +53,15 @@ class MapReplay:
         for line in open("data/{}.osu".format(self.mapid)):
             if isMapData:
                 objData = line.strip().split(",")
+
                 x = int(objData[0])
                 y = int(objData[1])
                 time = int(objData[2])
                 type = int(objData[3])
-                if type == 1:
+                if type % 4 == 1:  # %4, to also catch the circles that start new combo
                     self.map.append((time, Circle(x, y)))
-                elif type == 2:
+                elif type % 4 == 2:  # %4, to also catch the sliders that start new combo
                     self.map.append((time, Slider(x, y, objData[5])))
-
 
             # Only use relevant data for map parsing.
             if line.strip() == "[HitObjects]":
@@ -72,9 +69,7 @@ class MapReplay:
             elif isMapData and line.strip() == "":
                 isMapData = False
 
-
-    def loadReplay(self, playerid):
-
+    def load_replay(self, playerid):
         # If the replay is already downloaded, dont download again to save
         #  peppy's server.
         filename = "data/{}_{}".format(self.mapid, playerid)
@@ -120,7 +115,6 @@ class MapReplay:
 
             lclick = k5
             rclick = k10
-            # >>>
 
             totalTime += time
 
@@ -132,8 +126,8 @@ class MapReplay:
             if (onrclick or onlclick) and hittime < self.hitwindow50:
                 if type(self.map[objIdx][1]) is Circle:
                     # Actually clicking on the circle.
-                    if (x - self.map[objIdx][1].x)**2 + (y - self.map[objIdx][1].y)**2\
-                        < (54.4 - 4.48 * self.circleSize)**2:
+                    if (x - self.map[objIdx][1].x)**2 + (y - self.map[objIdx][1].y)**2 \
+                            < (54.4 - 4.48 * self.circleSize)**2:
 
                         if hittime < self.hitwindow300:
                             pass
@@ -146,7 +140,7 @@ class MapReplay:
                         print("Missed circle: {}.".format(objIdx))
                 else:
                     if (x - self.map[objIdx][1].x)**2 + (y - self.map[objIdx][1].y)**2\
-                        < (54.4 - 4.48 * self.circleSize)**2:
+                            < (54.4 - 4.48 * self.circleSize)**2:
 
                         pass
 
@@ -154,10 +148,31 @@ class MapReplay:
                         print("Missed slider: {}.".format(objIdx))
 
                 objIdx += 1
-
-
-
         return
+
+
+class MapDownloader:
+    def __init__(self, user, password):
+        data = {
+            "autologin": "on",
+            "login": "login",
+            "password": password,
+            "username": user,
+            "redirect": "",
+            "sid": ""
+        }
+        res = requests.post("https://osu.ppy.sh/forum/ucp.php?mode=login", data)
+        self.is_logged_in = res.status_code == 200
+
+    def download(self, mapid):
+        if not self.is_logged_in:
+            return False
+
+        res = requests.get("https://osu.ppy.sh/osu/{}".format(mapid))
+
+        with open("data/{}.osu".format(mapid), mode="w", newline="") as file:
+            file.write(res.text)
+
 
 async def get_mapdata(message, mapid, player):
     url = "https://osu.ppy.sh/api/get_beatmaps?k={}&b={}".format(keys[1], mapid)
@@ -225,12 +240,6 @@ async def on_message(message):
     cmd = msg_array[0]
     args = msg_array[1:]
 
-    if cmd == "!getscore":
-        if len(args) != 2:
-            await client.send_message(message.channel, "Syntax: !getscore <mapid> <player>")
-        else:
-            await get_mapdata(message, args[0], args[1])
-
     if cmd == "!setscore":
         if len(args) != 3:
             await client.send_message(message.channel, "Syntax: !setscore <mapid> <player> <score>")
@@ -238,23 +247,40 @@ async def on_message(message):
             await set_score(message, args[0], args[1], args[2])
 
 
-with open('key', 'r') as f:
-    keys = f.readlines()
-keys = [x.strip() for x in keys]
+if __name__ == "__main__":
+    # Parse command line arguments.
+    OPEN_DISCORD = True
+    if len(sys.argv) > 0:
+        if sys.argv[1] == "--offline":
+            OPEN_DISCORD = False
 
-if OPEN_DISCORD:
-    client.run(keys[0])
-else:
-    # str = input("Please input a map id.\n").strip()
+    # Create folder for data if it doesnt exist yet.
+    if not os.path.isdir("data/"):
+        os.mkdir("data")
 
-    str = "1531044"
+        # Read keys from file
+    with open('key', 'r') as f:
+        keys = f.readlines()
+    keys = [x.strip() for x in keys]
 
-    mapReplay = MapReplay()
-    mapReplay.mapid = str
-    mapReplay.loadMap()
+    if OPEN_DISCORD:
+        client.run(keys[0])
+    else:
+        user = keys[2]
+        password = keys[3]
+        map_downloader = MapDownloader(user, password)
 
-    # str = input("Please input a player name.\n").strip()
-    str = "minatozaki"
+        map_downloader.download("1571470")
 
-    mapReplay.loadReplay(str)
-    client.close()
+        # str = input("Please input a map id.\n").strip()
+        str = "1531044"
+
+        mapReplay = MapReplay()
+        mapReplay.mapid = str
+        mapReplay.load_map()
+
+        # str = input("Please input a player name.\n").strip()
+        str = "minatozaki"
+
+        mapReplay.load_replay(str)
+        client.close()
