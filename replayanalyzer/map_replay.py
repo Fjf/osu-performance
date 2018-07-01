@@ -70,7 +70,6 @@ class MapReplay:
                     # Actually clicking on the circle.
                     if (x - self.map.hit_objects[obj_idx][1].x)**2 + (y - self.map.hit_objects[obj_idx][1].y)**2 \
                             < (54.4 - 4.48 * self.map.circle_size)**2:
-
                         if hit_time < self.hit_window300:
                             pass
                         elif hit_time < self.hit_window100:

@@ -1,8 +1,8 @@
 import os
 
 from downloaders.map_downloader import MapDownloader
-from downloaders.replay_downloader import decode_file
-from replayanalyzer.mapreplay import analyze
+from replayanalyzer.map_replay import analyze
+from replayanalyzer.user_replay import parse_user_replays
 
 if __name__ == "__main__":
     # Create folder for data if it doesnt exist yet.
@@ -14,7 +14,8 @@ if __name__ == "__main__":
         keys = f.readlines()
     keys = [x.strip() for x in keys]
 
-    # decode_file("2_in_1_men", "123456789")
+    # Will look in the folder data/file_replay_data for user replays and parse them.
+    parse_user_replays()
 
     map_id = "1368008"
     map_downloader = MapDownloader(keys[2], keys[3])
