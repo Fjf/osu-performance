@@ -1,48 +1,17 @@
 from downloaders.replay_downloader import download_replay
-
-
-class Circle:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-
-class Slider:
-    def __init__(self, x, y, sliderdata):
-        self.x = x
-        self.y = y
-        spl = sliderdata.split("|")
-        self.type = spl[0]
-        # We need this to later calculate if the player stayed on the slider
-        if self.type == "L":
-            self.end_x = spl[1].split(":")[0]
-            self.end_y = spl[1].split(":")[1]
-            pass
-        elif self.type == "P":
-            pass
-        elif self.type == "B":
-            pass
-        self.sliderdata = spl[1]
+from replayanalyzer.map_parser import Map
+from replayanalyzer.objects import Circle
 
 
 class MapReplay:
     def __init__(self, api_key):
-        self.drain_rate = 0
-        self.circle_size = 0
-        self.overall_difficulty = 0
-        self.approach_rate = 0
-        self.slider_multiplier = 0
-        self.slider_tick_rate = 0
-
         self.map_id = ""
-        self.map = []
-        self.circleSize = 4
-        self.overallDifficulty = 9.3
+        self.map = None
         self.api_key = api_key
 
-        self.hit_window50 = 150 + 50 * (5 - self.overallDifficulty) / 5
-        self.hit_window100 = 100 + 40 * (5 - self.overallDifficulty) / 5
-        self.hit_window300 = 50 + 30 * (5 - self.overallDifficulty) / 5
+        self.hit_window50 = -1
+        self.hit_window100 = -1
+        self.hit_window300 = -1
 
         # Store data about the replay:
         # 0 if hit the circle with a 300
@@ -51,48 +20,18 @@ class MapReplay:
         # 3 for a miss
         self.replay = []
 
+    def set_map_id(self, map_id):
+        self.map_id = map_id
+
     def load_map(self):
-        is_map_data = False
-        is_difficulty_data = False
-        for line in open("data/{}.osu".format(self.map_id), encoding="utf-8"):
-            stripped_line = line.strip()
-            if is_map_data:
-                obj_data = stripped_line.split(",")
+        filename = "data/{}.osu".format(self.map_id)
 
-                x = int(obj_data[0])
-                y = int(obj_data[1])
-                time = int(obj_data[2])
-                type = int(obj_data[3])
-                if type % 4 == 1:  # %4, to also catch the circles that start new combo
-                    self.map.append((time, Circle(x, y)))
-                elif type % 4 == 2:  # %4, to also catch the sliders that start new combo
-                    self.map.append((time, Slider(x, y, obj_data[5])))
+        self.map = Map(filename)
+        self.map.parse_file()
 
-            if is_difficulty_data:
-                diff_data = stripped_line.split(":")
-                if diff_data[0] == "HPDrainRate":
-                    self.drain_rate = diff_data[1]
-                elif diff_data[0] == "CircleSize":
-                    self.circle_size = diff_data[1]
-                elif diff_data[0] == "OverallDifficulty":
-                    self.overall_difficulty = diff_data[1]
-                elif diff_data[0] == "ApproachRate":
-                    self.approach_rate = diff_data[1]
-                elif diff_data[0] == "SliderMultiplier":
-                    self.slider_multiplier = diff_data[1]
-                elif diff_data[0] == "SliderTickRate":
-                    self.slider_tick_rate = diff_data[1]
-
-            # Only use relevant data for map parsing.
-            if stripped_line == "[Difficulty]":
-                is_difficulty_data = True
-            elif is_difficulty_data and stripped_line == "":
-                is_difficulty_data = False
-
-            if stripped_line == "[HitObjects]":
-                is_map_data = True
-            elif is_map_data and stripped_line == "":
-                is_map_data = False
+        self.hit_window50 = 150 + 50 * (5 - self.map.overall_difficulty) / 5
+        self.hit_window100 = 100 + 40 * (5 - self.map.overall_difficulty) / 5
+        self.hit_window300 = 50 + 30 * (5 - self.map.overall_difficulty) / 5
 
     def load_replay(self, player_id):
         replay_data = download_replay(self.api_key, player_id, self.map_id)
@@ -122,15 +61,15 @@ class MapReplay:
             total_time += time
 
             # If a key was pressed, check if there is a hitobject within timeframe.
-            if obj_idx >= len(self.map):
+            if obj_idx >= len(self.map.hit_objects):
                 continue
 
-            hit_time = abs(total_time - self.map[obj_idx][0])
+            hit_time = abs(total_time - self.map.hit_objects[obj_idx][0])
             if (on_r_click or on_l_click) and hit_time < self.hit_window50:
-                if type(self.map[obj_idx][1]) is Circle:
+                if type(self.map.hit_objects[obj_idx][1]) is Circle:
                     # Actually clicking on the circle.
-                    if (x - self.map[obj_idx][1].x)**2 + (y - self.map[obj_idx][1].y)**2 \
-                            < (54.4 - 4.48 * self.circleSize)**2:
+                    if (x - self.map.hit_objects[obj_idx][1].x)**2 + (y - self.map.hit_objects[obj_idx][1].y)**2 \
+                            < (54.4 - 4.48 * self.map.circle_size)**2:
 
                         if hit_time < self.hit_window300:
                             pass
@@ -142,8 +81,8 @@ class MapReplay:
                     else:
                         print("Missed circle: {}.".format(obj_idx))
                 else:
-                    if (x - self.map[obj_idx][1].x)**2 + (y - self.map[obj_idx][1].y)**2\
-                            < (54.4 - 4.48 * self.circleSize)**2:
+                    if (x - self.map.hit_objects[obj_idx][1].x)**2 + (y - self.map.hit_objects[obj_idx][1].y)**2\
+                            < (54.4 - 4.48 * self.map.circle_size)**2:
 
                         pass
 
@@ -156,6 +95,6 @@ class MapReplay:
 def analyze(api_key, name, map_id):
     map_replay = MapReplay(api_key)
 
-    map_replay.map_id = map_id
+    map_replay.set_map_id(map_id)
     map_replay.load_map()
     map_replay.load_replay(name)
