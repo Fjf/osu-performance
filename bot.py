@@ -15,6 +15,7 @@ class Circle:
         self.x = x
         self.y = y
 
+
 class Slider:
     def __init__(self, x, y, sliderdata):
         self.x = x
@@ -170,7 +171,7 @@ class MapDownloader:
 
         res = requests.get("https://osu.ppy.sh/osu/{}".format(mapid))
 
-        with open("data/{}.osu".format(mapid), mode="w", newline="") as file:
+        with open("data/{}.osu".format(mapid), mode="w", newline="", encoding="utf8") as file:
             file.write(res.text)
 
 
@@ -270,17 +271,17 @@ if __name__ == "__main__":
         password = keys[3]
         map_downloader = MapDownloader(user, password)
 
-        map_downloader.download("1571470")
+        mapid = "1531044"
+        map_downloader.download(mapid)
 
         # str = input("Please input a map id.\n").strip()
-        str = "1531044"
-
-        mapReplay = MapReplay()
-        mapReplay.mapid = str
-        mapReplay.load_map()
-
-        # str = input("Please input a player name.\n").strip()
-        str = "minatozaki"
-
-        mapReplay.load_replay(str)
+        #
+        # mapReplay = MapReplay()
+        # mapReplay.mapid = mapid
+        # mapReplay.load_map()
+        #
+        # # str = input("Please input a player name.\n").strip()
+        # str = "minatozaki"
+        #
+        # mapReplay.load_replay(str)
         client.close()
