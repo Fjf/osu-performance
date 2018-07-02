@@ -15,6 +15,8 @@ def parse_user_replays():
     """
 
     path = "data/file_replay_data"
+    if not os.path.isdir(path):
+        os.mkdir(path)
     files = [f for f in listdir(path) if isfile(join(path, f))]
     for file in files:
         with open(file, "r"):
